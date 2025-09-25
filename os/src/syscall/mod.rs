@@ -21,6 +21,8 @@ const SYSCALL_GET_TIME: usize = 169;
 /// trace syscall
 const SYSCALL_TRACE: usize = 410;
 
+use crate::task::{current_task, MAX_SYSCALL_NUM};
+
 mod fs;
 mod process;
 
@@ -29,12 +31,19 @@ use process::*;
 
 /// handle syscall exception with `syscall_id` and other arguments
 pub fn syscall(syscall_id: usize, args: [usize; 3]) -> isize {
+    // 每次系统调用都统计
+    if let Some(task) = current_task() {
+        if syscall_id < MAX_SYSCALL_NUM {
+            task.syscall_count[syscall_id] += 1;
+        }
+    }
+
     match syscall_id {
         SYSCALL_WRITE => sys_write(args[0], args[1] as *const u8, args[2]),
         SYSCALL_EXIT => sys_exit(args[0] as i32),
         SYSCALL_YIELD => sys_yield(),
         SYSCALL_GET_TIME => sys_get_time(args[0] as *mut TimeVal, args[1]),
         SYSCALL_TRACE => sys_trace(args[0], args[1], args[2]),
-        _ => panic!("Unsupported syscall_id: {}", syscall_id),
+        _ => -1,
     }
-}
+} 
